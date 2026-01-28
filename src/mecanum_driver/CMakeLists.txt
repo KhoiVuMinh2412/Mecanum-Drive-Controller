@@ -28,6 +28,16 @@ add_executable(mecanum_node
   src/mecanum_driver.cpp
 )
 
+add_executable(keyboard_node
+src/teleop_8_direction.cpp
+)
+
+ament_target_dependencies(keyboard_node rclcpp geometry_msgs)
+
+install(TARGETS
+  keyboard_node
+  DESTINATION lib/${PROJECT_NAME})
+
 target_link_libraries(mecanum_node mecanum_lib)
 ament_target_dependencies(mecanum_node
   rclcpp
