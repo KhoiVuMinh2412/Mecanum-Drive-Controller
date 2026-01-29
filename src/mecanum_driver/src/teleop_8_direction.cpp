@@ -13,6 +13,8 @@ using namespace std::chrono_literals;
 using namespace std;
 using std::placeholders::_1;
 
+// creating a method to read the input key in terminal without pressing enter
+// alternative to conio.h on windows
 int getch(void)
 {
     struct termios oldattr, newattr;
@@ -39,7 +41,7 @@ class KeyboardControl : public rclcpp::Node {
 
     void main_callback()
     {
-        RCLCPP_INFO(this->get_logger(), "Keyboard is ready, press K to brake,, Ctrl + C to break, WASD to control and J, L to turn\n");
+        RCLCPP_INFO(this->get_logger(), "Keyboard is ready, press K to brake, Ctrl + C to break, WASD to control and J, L to turn\n");
 
         while (rclcpp::ok()) 
         {
