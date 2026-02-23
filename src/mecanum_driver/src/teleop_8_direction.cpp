@@ -43,54 +43,75 @@ class KeyboardControl : public rclcpp::Node {
     {
         RCLCPP_INFO(this->get_logger(), "Keyboard is ready, press K to brake, Ctrl + C to break, WASD to control and J, L to turn\n");
 
+        double current_vx = 0.0;
+        double current_vy = 0.0;
+        double current_vz = 0.0;
+        auto c_message = geometry_msgs::msg::Twist();
+
+        const double step = 0.05;
+        const double max_speed = 1.0;
         while (rclcpp::ok()) 
         {
         char c = getch();
-        auto c_message = geometry_msgs::msg::Twist();
+        bool dirty = true;
 
         switch (c)
         {
         case 'w':
-            c_message.linear.x = speed;
+            current_vx += step;
             break;
         case 'q':
-            c_message.linear.x = speed;
-            c_message.linear.y = speed;
+            current_vx += step;
+            current_vy += step;
             break;
         case 'e':
-            c_message.linear.x = speed;
-            c_message.linear.y = -speed;
+            current_vx += step;
+            current_vy -= step;
             break;
         case 'a':
-            c_message.linear.y = speed;
+            current_vy += step;
             break;
         case 's':
-            c_message.linear.x = -speed;
+            current_vx -= step;
             break;
         case 'd':
-            c_message.linear.y = -speed;
+            current_vy -= step;
             break;
         case 'z':
-            c_message.linear.y = speed;
-            c_message.linear.x = -speed;
+            current_vy += step;
+            current_vx -= step;
             break;
         case 'c':
-            c_message.linear.y = -speed;
-            c_message.linear.x = -speed;
+            current_vy -= step;
+            current_vx -= step;
             break;
+        case ' ':
         case 'k':
-            c_message.linear.x = 0;
-            c_message.linear.y = 0;
+            current_vx = 0.0;
+            current_vy = 0.0;
+            current_vz = 0.0;
             break;
         case 'j':
-            c_message.angular.z = turn;
+            current_vz += step;
             break;
         case 'l':
-            c_message.angular.z = -turn;
+            current_vz -= step;
             break;
         case '\x03':
+            return;
+        default:
+            dirty = false;
             break;
+        }
 
+        if (dirty) {
+            current_vx = std::clamp(current_vx, -max_speed, max_speed);
+            current_vy = std::clamp(current_vy, -max_speed, max_speed);
+            current_vz = std::clamp(current_vz, -max_speed, max_speed);
+
+            c_message.linear.x = current_vx;
+            c_message.linear.y = current_vy;
+            c_message.angular.z = current_vz;
         }
 
         RCLCPP_INFO(this->get_logger(), "button pressed: '%c'", c);
