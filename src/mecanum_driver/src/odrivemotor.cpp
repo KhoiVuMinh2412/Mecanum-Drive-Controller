@@ -105,6 +105,8 @@ void ODriveMotor::parseCanMessage(uint32_t can_id, uint8_t* data, int len) {
     case (int)OdriveCommandID::GET_ENCODER_ESTIMATES:
         memcpy(&this->pos_feedback, data, sizeof(float)); // doc 4 byte dau de lay pos
         memcpy(&this->vel_feedback, &data[4], sizeof(float)); // doc 4 byte sau de lay vel
+        printf("Motor [%d] Feedback -> Pos: %.2f | Vel: %.2f\n", 
+               this->node_id_, this->pos_feedback, this->vel_feedback);
         break;  
     
     case (int)OdriveCommandID::HEARTBEAT:
@@ -113,4 +115,4 @@ void ODriveMotor::parseCanMessage(uint32_t can_id, uint8_t* data, int len) {
         break;
     }
 
-}
+};
