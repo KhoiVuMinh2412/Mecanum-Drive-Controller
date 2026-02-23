@@ -56,6 +56,10 @@ class ODriveMotor
     private:
     CanComm* can_comm_ptr;
     int node_id_ = 0;
+    float pos_feedback = 0.0f;
+    float vel_feedback = 0.0f;
+    uint32_t axis_error;
+    uint32_t axis_current_state;
 
     public:
 
@@ -73,14 +77,10 @@ class ODriveMotor
     bool setControllerMode(ODriveControlMode mode);
 
 
-    bool getEncoderEstimate();
     bool clearErrors();
     
     // cac bien luu tru thong tin nhan ve
-    float pos_feedback = 0.0f;
-    float vel_feedback = 0.0f;
-    uint32_t axis_error;
-    uint32_t axis_current_state;
+    
     void parseCanMessage(uint32_t can_id, uint8_t* data, int len); // ham de xu ly cac tin nhan vao
 };
 
