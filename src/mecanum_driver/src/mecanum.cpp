@@ -31,8 +31,8 @@ void MecanumRobot::drive(float linear_x, float linear_y, float angular_z)
     
     float circum = 2 * M_PI * this->wheel_rad;
 
-    float input_fr = v_fl / circum;
-    float input_fl = v_fr / circum;
+    float input_fr = v_fr / circum;
+    float input_fl = v_fl / circum;
     float input_rl = v_rl / circum;
     float input_rr = v_rr / circum;
 
