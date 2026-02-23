@@ -3,6 +3,7 @@
 #include <linux/can/raw.h>
 #include "can_comm.hpp"
 #include <unistd.h>
+#include <fcntl.h>
 
 
 // linux socket group include
@@ -43,9 +44,15 @@ bool CanComm::init(const std::string& interface_name) {
         printf("failed to bind");
         return false;
     }
+
+    int flags = fcntl(socket_fd, F_GETFL, 0);
+    fcntl(socket_fd, F_SETFL, flags | O_NONBLOCK);
+    
     is_connected = true;
     std::cout << "Can interface " << interface_name << " created sucessfully!\n";
     return true;
+
+
 };
 
 bool CanComm::send_frame(int can_id, uint8_t* data, int len){ // send frame function
@@ -53,7 +60,14 @@ bool CanComm::send_frame(int can_id, uint8_t* data, int len){ // send frame func
     struct can_frame frame; // define the can_frame struct inherit from the struct in can.h
     frame.can_id = can_id;
     frame.can_dlc = len;
-    memcpy(frame.data, data, len); // copy the data to the frame
+    
+    if (data!=nullptr && len > 0) {
+        memcpy(frame.data, data, len); // copy the data to the frame
+    }
+    else {
+        memset(frame.data, 0, 8);
+    }
+    
     if (write(socket_fd, &frame, sizeof(struct can_frame)) != sizeof(struct can_frame)){
         printf("failed to write");
         return false;
@@ -62,14 +76,19 @@ bool CanComm::send_frame(int can_id, uint8_t* data, int len){ // send frame func
 };
 
 bool CanComm::receive_frame(struct can_frame& frame){
-
+    if (socket_fd < 0)
+    {
+        return false;
+    }
+ 
     int nbytes = read(socket_fd, &frame, sizeof(struct can_frame));
+
     if (nbytes < 0) {
         return false;
     } 
-    if (nbytes < (int)sizeof(struct can_frame)){
-        return false;   
+    if (nbytes == sizeof(struct can_frame)){
+        return true;   
     }
-    return true;
+    return false;
 }
 
