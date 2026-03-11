@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <iostream>
+#include <map>
 
 using namespace std::chrono_literals;
 using std::placeholders::_1;
@@ -15,52 +16,63 @@ using namespace std;
 class MecanumDriver : public rclcpp::Node {
     private:
     
-    // create a can communication port 
-    // create a robot consisting of 4 mecanum wheels
-
-    CanComm* can_comm;
-    MecanumRobot* robot;
-
-
-    // 4 mecanum wheels (motor) here
-    ODriveMotor* fl; // front left
-    ODriveMotor* fr; // front right
-    ODriveMotor* rl; // rear left
-    ODriveMotor* rr; // rear right
+    // Use smart pointers for automatic memory management and a map for easy lookup
+    std::unique_ptr<CanComm> can_comm_;
+    std::unique_ptr<MecanumRobot> robot_;
+    std::map<int, std::unique_ptr<ODriveMotor>> motors_;
 
     rclcpp::TimerBase::SharedPtr feedback_timer; // timer for listening to odrive feedback
 
     public:
     MecanumDriver()
-    : Node("mecanum_driver_node")
+    : Node("mecanum_driver")
     {
-        can_comm = new CanComm();
-        if (!can_comm->init("vcan0")) 
-        {
-            RCLCPP_ERROR(this->get_logger(), "Khong the mo cong can vcan0~\n");
-        }
-        // allocate 4 new odrive wheels with different ids
-        fl = new ODriveMotor(0, can_comm);
-        fr = new ODriveMotor(1, can_comm);
-        rl = new ODriveMotor(2, can_comm);
-        rr = new ODriveMotor(3, can_comm);
+        // Declare and get parameters
+        this->declare_parameter<std::string>("can_interface", "vcan0");
+        this->declare_parameter<std::vector<int64_t>>("motor_ids", {0, 1, 2, 3});
+        this->declare_parameter<double>("wheel_base", 0.4);
+        this->declare_parameter<double>("track_width", 0.3);
+        this->declare_parameter<double>("wheel_radius", 0.05);
 
-        robot = new MecanumRobot(fl, fr, rl, rr);
+        auto can_interface = this->get_parameter("can_interface").as_string();
+        auto motor_ids_long = this->get_parameter("motor_ids").as_integer_array();
+        
+        auto wheel_base = this->get_parameter("wheel_base").as_double();
+        auto track_width = this->get_parameter("track_width").as_double();
+        auto wheel_radius = this->get_parameter("wheel_radius").as_double();
+
+        can_comm_ = std::make_unique<CanComm>();
+        if (!can_comm_->init(can_interface)) 
+        {
+            RCLCPP_ERROR(this->get_logger(), "Failed to open CAN interface '%s'", can_interface.c_str());
+            rclcpp::shutdown();
+            return;
+        }
+
+        if (motor_ids_long.size() != 4) {
+            RCLCPP_ERROR(this->get_logger(), "Expected 4 motor IDs, but got %zu", motor_ids_long.size());
+            rclcpp::shutdown();
+            return;
+        }
+
+        // Create motors and robot
+        motors_[motor_ids_long[0]] = std::make_unique<ODriveMotor>(motor_ids_long[0], can_comm_.get());
+        motors_[motor_ids_long[1]] = std::make_unique<ODriveMotor>(motor_ids_long[1], can_comm_.get());
+        motors_[motor_ids_long[2]] = std::make_unique<ODriveMotor>(motor_ids_long[2], can_comm_.get());
+        motors_[motor_ids_long[3]] = std::make_unique<ODriveMotor>(motor_ids_long[3], can_comm_.get());
+
+        robot_ = std::make_unique<MecanumRobot>(motors_[motor_ids_long[0]].get(), motors_[motor_ids_long[1]].get(), motors_[motor_ids_long[2]].get(), motors_[motor_ids_long[3]].get(), wheel_radius, wheel_base, track_width);
 
         feedback_timer = this->create_wall_timer(5ms, std::bind(&MecanumDriver::read_can_loop, this));
         subscription_ = this->create_subscription<geometry_msgs::msg::Twist>("/cmd_vel", 10, std::bind(&MecanumDriver::robot_callback, this, _1));
-        RCLCPP_INFO(this->get_logger(), "the mecanum node started ok!\n");
+        RCLCPP_INFO(this->get_logger(), "Mecanum driver node started successfully!");
     };
         
     ~MecanumDriver(){
-        if(fl) fl->setAxisState(OdriveAxisState::IDLE);
-        if(fr) fr->setAxisState(OdriveAxisState::IDLE);
-        if(rl) rl->setAxisState(OdriveAxisState::IDLE);
-        if(rr) rr->setAxisState(OdriveAxisState::IDLE);
-
-        delete robot;
-        delete fl; delete fr; delete rl; delete rr;
-        delete can_comm;
+        for (auto const& [id, motor] : motors_) {
+            if (motor) motor->setAxisState(OdriveAxisState::IDLE);
+        }
+        RCLCPP_INFO(this->get_logger(), "Mecanum driver node shutting down.");
     }
 
 
@@ -68,13 +80,12 @@ class MecanumDriver : public rclcpp::Node {
     {
         struct can_frame frame;
 
-        while (can_comm->receive_frame(frame))
+        while (can_comm_->receive_frame(frame))
         {
-            fl->parseCanMessage(frame.can_id, frame.data, frame.can_dlc);
-            fr->parseCanMessage(frame.can_id, frame.data, frame.can_dlc);
-            rl->parseCanMessage(frame.can_id, frame.data, frame.can_dlc);
-            rr->parseCanMessage(frame.can_id, frame.data, frame.can_dlc);
-            
+            int node_id = (frame.can_id >> 5);
+            if (motors_.count(node_id)) {
+                motors_[node_id]->parseCanMessage(frame.can_id, frame.data, frame.can_dlc);
+            }
         }
         
     }
@@ -86,10 +97,10 @@ class MecanumDriver : public rclcpp::Node {
         float vy = msg.linear.y;
         float vz = msg.angular.z;
 
-        RCLCPP_INFO(this->get_logger(), "Received: vx = %.2f, vy = %.2f, vz     = %.2f", vx, vy, vz);
+        RCLCPP_DEBUG(this->get_logger(), "Received: vx = %.2f, vy = %.2f, vz = %.2f", vx, vy, vz);
 
-        if (robot!=nullptr) {
-        robot->drive(vx, vy, vz);
+        if (robot_ != nullptr) {
+            robot_->drive(vx, vy, vz);
         }
     }
 
