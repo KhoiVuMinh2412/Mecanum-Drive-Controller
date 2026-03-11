@@ -17,8 +17,11 @@ private:
     float wheel_base;
     float track_width;
 
+    float rotational_component_;
+    float wheel_circumference_;
+
 public:
-    MecanumRobot(ODriveMotor *fl, ODriveMotor *fr, ODriveMotor *rl, ODriveMotor *rr);
+    MecanumRobot(ODriveMotor *fl, ODriveMotor *fr, ODriveMotor *rl, ODriveMotor *rr, float wheel_rad, float wheel_base, float track_width);
 
     void drive(float linear_x, float linear_y, float angular_z);
 };
