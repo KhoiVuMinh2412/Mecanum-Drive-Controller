@@ -41,7 +41,16 @@ class KeyboardControl : public rclcpp::Node {
 
     void main_callback()
     {
-        RCLCPP_INFO(this->get_logger(), "Keyboard is ready, press K to brake, Ctrl + C to break, WASD to control and J, L to turn\n");
+        RCLCPP_INFO(this->get_logger(), "Keyboard control is ready.\n"
+                                      "---------------------------\n"
+                                      "Moving around:\n"
+                                      "   q    w    e\n"
+                                      "   a    s    d\n"
+                                      "   z    x    c\n\n"
+                                      "j/l : rotate left/right\n"
+                                      "space/k : emergency stop\n"
+                                      "CTRL-C to quit\n"
+                                      "---------------------------");
 
         double current_vx = 0.0;
         double current_vy = 0.0;
@@ -54,36 +63,40 @@ class KeyboardControl : public rclcpp::Node {
         {
         char c = getch();
         bool dirty = true;
+        double x_inc = 0.0;
+        double y_inc = 0.0;
+        double z_inc = 0.0;
 
         switch (c)
         {
         case 'w':
-            current_vx += step;
+            x_inc = step;
             break;
         case 'q':
-            current_vx += step;
-            current_vy += step;
+            x_inc = step;
+            y_inc = step;
             break;
         case 'e':
-            current_vx += step;
-            current_vy -= step;
+            x_inc = step;
+            y_inc = -step;
             break;
         case 'a':
-            current_vy += step;
+            y_inc = step;
             break;
         case 's':
-            current_vx -= step;
+        case 'x':
+            x_inc = -step;
             break;
         case 'd':
-            current_vy -= step;
+            y_inc = -step;
             break;
         case 'z':
-            current_vy += step;
-            current_vx -= step;
+            y_inc = step;
+            x_inc = -step;
             break;
         case 'c':
-            current_vy -= step;
-            current_vx -= step;
+            y_inc = -step;
+            x_inc = -step;
             break;
         case ' ':
         case 'k':
@@ -92,17 +105,28 @@ class KeyboardControl : public rclcpp::Node {
             current_vz = 0.0;
             break;
         case 'j':
-            current_vz += step;
+            z_inc = step;
             break;
         case 'l':
-            current_vz -= step;
+            z_inc = -step;
             break;
         case '\x03':
+            RCLCPP_INFO(this->get_logger(), "Exiting on Ctrl+C");
             return;
         default:
             dirty = false;
             break;
         }
+
+        // Normalize diagonal movement to maintain constant speed
+        if (x_inc != 0.0 && y_inc != 0.0) {
+            x_inc /= std::sqrt(2.0);
+            y_inc /= std::sqrt(2.0);
+        }
+
+        current_vx += x_inc;
+        current_vy += y_inc;
+        current_vz += z_inc;
 
         if (dirty) {
             current_vx = std::clamp(current_vx, -max_speed, max_speed);
@@ -114,7 +138,7 @@ class KeyboardControl : public rclcpp::Node {
             c_message.angular.z = current_vz;
         }
 
-        RCLCPP_INFO(this->get_logger(), "button pressed: '%c'", c);
+        RCLCPP_INFO(this->get_logger(), "Publishing: vx=%.2f, vy=%.2f, vaz=%.2f", c_message.linear.x, c_message.linear.y, c_message.angular.z);
         publisher_->publish(c_message);
         }
     }
@@ -122,9 +146,6 @@ class KeyboardControl : public rclcpp::Node {
     private:
     rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr publisher_;
 
-    double speed = 0.5;
-    double turn = 1.0;
-    
 };
 
 int main(int argc, char * argv[])
