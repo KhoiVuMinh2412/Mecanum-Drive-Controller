@@ -81,7 +81,7 @@ class ODriveMotor
     
     // cac bien luu tru thong tin nhan ve
     
-    void parseCanMessage(uint32_t can_id, uint8_t* data, int len); // ham de xu ly cac tin nhan vao
+    void parseCanMessage(uint32_t can_id, uint8_t* data); // ham de xu ly cac tin nhan vao
 };
 
 

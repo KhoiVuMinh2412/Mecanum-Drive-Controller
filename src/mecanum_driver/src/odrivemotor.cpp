@@ -19,6 +19,33 @@ ODriveMotor::ODriveMotor(int node_id, CanComm *can_comm)
 
 ODriveMotor::~ODriveMotor() {}; // goi destructor
 
+bool ODriveMotor::init() {
+    printf("ODriveMotor [%d]: initialising...\n", node_id_);
+
+    if (!clearErrors()) {
+        printf("ODriveMotor [%d]: clearErrors() failed\n", node_id_);
+        return false;
+    }
+    usleep(10'000);   // 10 ms
+
+
+    if (!setControllerMode(ODriveControlMode::VEL_CONTROL)) { // Passthrough is already hardcoded here
+        printf("ODriveMotor [%d]: setControllerMode() failed\n", node_id_);
+        return false;
+    }
+    usleep(10'000);
+
+    // Step 3 – enter closed-loop control so the drive accepts setVelocity()
+    if (!setAxisState(OdriveAxisState::CLOSED_LOOP_CONTROL)) {
+        printf("ODriveMotor [%d]: setAxisState(CLOSED_LOOP_CONTROL) failed\n", node_id_);
+        return false;
+    }
+    usleep(10'000);
+
+    printf("ODriveMotor [%d]: init complete.\n", node_id_);
+    return true;
+}
+
 // ham de set trang thai axis
 bool ODriveMotor::setAxisState(OdriveAxisState state)
 {
@@ -48,7 +75,7 @@ bool ODriveMotor::setVelocity(float velocity)
     // data[2] = converter.fin_val[2];
     // data[3] = converter.fin_val[3];
 
-    memcpy(data, &velocity, sizeof(float)); // dung duoc vi may tinh cung dang dung chuan ieee 754
+    memcpy(data, &velocity, sizeof(float)); // dung duoc vi may tinh cung dang dung chuan ieee 754, khong can set byte data thu cong
 
     return can_comm_ptr->send_frame(can_id, data, 8);
 };
@@ -90,8 +117,8 @@ bool ODriveMotor::setControllerMode(ODriveControlMode mode)
     return can_comm_ptr->send_frame(can_id, data, 8);
 };
 
-void ODriveMotor::parseCanMessage(uint32_t can_id, uint8_t* data, int len) {
-    int mess_node_id = (can_id >> 5); // lay node id tu can_id
+void ODriveMotor::parseCanMessage(uint32_t can_id, uint8_t* data) {
+    int mess_node_id = ((can_id >> 5) & 0x3f); // lay node id tu can_id
 
     if (mess_node_id != this->node_id_) // so sanh xem dung id cua motor khong
     {
