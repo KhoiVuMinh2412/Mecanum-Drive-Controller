@@ -63,9 +63,11 @@ class MecanumDriver : public rclcpp::Node {
 
         for (auto& [id, motor] : motors_) 
         {
-            motor->clearErrors();
-            motor->setAxisState(OdriveAxisState::CLOSED_LOOP_CONTROL);
-            motor->setControllerMode(ODriveControlMode::VEL_CONTROL);
+            if (!motor->init()) {
+                RCLCPP_ERROR(this->get_logger(), "Failed to initialize motor %d", id);
+                rclcpp::shutdown();
+                return;
+            }
         }
 
         robot_ = std::make_unique<MecanumRobot>(motors_[motor_ids_long[0]].get(), motors_[motor_ids_long[1]].get(), motors_[motor_ids_long[2]].get(), motors_[motor_ids_long[3]].get(), wheel_radius, wheel_base, track_width);
