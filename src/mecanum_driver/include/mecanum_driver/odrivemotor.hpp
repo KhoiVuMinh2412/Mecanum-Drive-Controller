@@ -34,8 +34,9 @@ enum class OdriveAxisState : uint8_t {
 };
 
 enum class ODriveControlMode : uint8_t {
-    VEL_CONTROL                             = 1,
-    POS_CONTROL                             = 2,
+    TORQUE_CONTROL                          = 1,
+    VEL_CONTROL                             = 2,
+    POS_CONTROL                             = 3,
 };
 
 enum class ODriveInputMode : uint8_t {
