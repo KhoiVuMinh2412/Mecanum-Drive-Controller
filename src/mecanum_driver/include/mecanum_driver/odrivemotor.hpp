@@ -7,17 +7,17 @@
 #include <cstdint>
 #include <array>
 
-enum class OdriveCommandID : uint8_t {
+enum class OdriveCommandID : uint32_t {
     HEARTBEAT                   = 0x001,
     SET_AXIS_STATE              = 0x007,
     GET_ENCODER_ESTIMATES       = 0x009,
-    SET_INPUT_VEL               = 0x00D,
-    SET_INPUT_POS               = 0x00C,
     SET_CONTROLLER_MODE         = 0x00B,
+    SET_INPUT_POS               = 0x00C,
+    SET_INPUT_VEL               = 0x00D,
     CLEAR_ERRORS                = 0x018,
 };
 
-enum class OdriveAxisState : uint8_t {
+enum class OdriveAxisState : uint32_t {
     UNDEFINED                               = 0x0,
     IDLE                                    = 0x1,
     STARTUP_SEQUENCE                        = 0x2,
@@ -33,13 +33,13 @@ enum class OdriveAxisState : uint8_t {
     ENCODER_HALL_PHASE_CALIBRATION          = 0xD,
 };
 
-enum class ODriveControlMode : uint8_t {
+enum class ODriveControlMode : int32_t {
     TORQUE_CONTROL                          = 1,
     VEL_CONTROL                             = 2,
     POS_CONTROL                             = 3,
 };
 
-enum class ODriveInputMode : uint8_t {
+enum class ODriveInputMode : int32_t {
     INACTIVE                                = 0x0,
     PASSTHROUGH                             = 0x1,
     VEL_RAMP                                = 0x2,
