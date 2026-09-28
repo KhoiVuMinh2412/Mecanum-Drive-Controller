@@ -14,11 +14,6 @@ Then source the install using
 source install/setup.bash
 ``` 
 in terminal.
-### To launch:
-Use:
-```
-ros2 launch mecanum_driver robot.launch.py 
-``` 
 ### To run separately:
 Run **mecanum_node**:
 ```
